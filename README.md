@@ -6,6 +6,12 @@ Probabilidade e incerteza aplicadas a sistemas de IA: inferência bayesiana via 
 
 ---
 
+## Objetivos de estudo
+
+O curso 6.431x constrói a base probabilística de toda decisão sob incerteza. Este repositório traduz três blocos centrais em código executável: **(1)** atualização bayesiana com priors conjugados e amostragem MCMC quando a posterior não é analítica; **(2)** testes A/B que reportam probabilidade de superioridade (`P(B > A)`) em vez de apenas p-values; **(3)** simulação Monte Carlo para quantificar caudas de distribuições operacionais (latência, custo, falha). O objetivo é sair do "calcular probabilidade no papel" para **tomar decisões de produto e infraestrutura com intervalos de credibilidade**.
+
+---
+
 ## Resultados em destaque
 
 | Análise | Resultado | Interpretação |
@@ -16,25 +22,25 @@ Probabilidade e incerteza aplicadas a sistemas de IA: inferência bayesiana via 
 
 ---
 
-## Figuras
+## Figuras e interpretação
 
 ### Atualização bayesiana (conjugacy Beta-Bernoulli)
 
 ![Posterior Beta após 45 sucessos em 100 trials](docs/figures/mcmc_posterior.png)
 
-A posterior analítica `Beta(α+s, β+n−s)` coincide com a média MCMC — validação do sampler Metropolis-Hastings.
+A linha tracejada é o prior uniforme `Beta(1,1)` — representa ignorância inicial. A área azul é a posterior `Beta(46,56)` após observar 45 sucessos em 100 tentativas: o pico desloca-se para ~0.45 e a incerteza estreita-se. A linha pontilhada vermelha marca o MAP. A coincidência entre média MCMC e posterior analítica **valida o sampler Metropolis-Hastings** — se divergissem, haveria bug no proposal ou burn-in insuficiente.
 
 ### Teste A/B bayesiano
 
 ![Distribuições posteriores dos braços A e B](docs/figures/ab_posteriors.png)
 
-Em vez de p-value frequentista, reportamos **P(θ_B > θ_A)** integrando sobre as posteriors.
+As curvas azul (A: 120/1000) e verde (B: 145/1000) são posteriors Beta independentes. A área onde a curva verde domina a azul corresponde a `P(θ_B > θ_A) ≈ 0.95`. No mercado, isso permite dizer ao PM: *"há 95% de chance de que a variante B seja melhor"* — linguagem mais intuitiva que p-value para stakeholders não-estatísticos.
 
 ### Monte Carlo — latência de inferência
 
 ![Histograma de latência com spikes](docs/figures/latency_distribution.png)
 
-Modelo: `N(120, 30)` com probabilidade 2% de multiplicador ×5 — típico de cold-start GPU ou cache miss.
+A distribuição é aproximadamente normal (corpo) com uma **cauda pesada à direita** causada por 2% de eventos com multiplicador ×5 (cold-start GPU, cache miss, retry). As linhas p95 e p99 mostram que SLA baseado apenas na média (**~130 ms**) esconde eventos de **600+ ms** — crítico para definir timeouts em pipelines RAG e APIs de inferência.
 
 ---
 
@@ -46,32 +52,20 @@ Modelo: `N(120, 30)` com probabilidade 2% de multiplicador ×5 — típico de co
 | `ab-testing/` | Beta posterior, `P(B>A)` | `python ab-testing/run.py` |
 | `risk-uncertainty/` | Simulação latência/custo/falhas | `python risk-uncertainty/run.py` |
 
-## Fundamentos teóricos
-
-**Bayes:**
-```
-P(θ|D) ∝ P(D|θ) · P(θ)
-```
-
-**Metropolis-Hastings:** aceitar proposta `θ'` com probabilidade `min(1, P(θ'|D)/P(θ|D))`.
-
-**Perda esperada (risco operacional):**
-```
-E[Loss] ≈ (1/N) Σᵢ lossᵢ   via Monte Carlo
-```
-
 ## Setup
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python docs/generate_figures.py   # regenerar plots
+python docs/generate_figures.py
 ```
 
-## Portfólio
+---
 
-- [Portfolio AI Engineer / CTO](https://portfolio-ai-cto-guaranta.netlify.app)
-- [Bayes e cybersecurity](docs/portfolio-link.md)
+## Aprendizados e aplicação no mercado
+
+A inferência bayesiana muda a pergunta de *"rejeito H₀?"* para *"qual a distribuição da taxa de conversão dado os dados?"* — essencial em **experimentação de produto** (A/B de onboarding, pricing, prompts de LLM) e em **gestão de risco** (quantificar incerteza de latência e custo antes de comprometer SLAs). MCMC generaliza para posteriors sem forma fechada (modelos hierárquicos, ABn com múltiplos braços). Monte Carlo operacional alimenta **capacity planning** e **FinOps de IA**: saber o p99 de custo por request evita surpresas na fatura de GPU. Para AI Engineer/CTO, este repositório é a ponte entre estatística MIT e decisões de produção com intervalos de confiança honestos.
+
+---
 
 ## Autor
 
